@@ -4,7 +4,8 @@ Plugin for [dotbot](https://github.com/anishathalye/dotbot) that adds a `pacaur`
 directive. It allows installation of packeges using `pacaur`, and by extension
 `pacman`, packages.
 
-This plugin was based off of the [apt-get plugin](https://github.com/rubenvereecken/dotbot-apt-get) and [brew plugin](https://github.com/d12frosted/dotbot-brew).
+This plugin will attempt to install `pacaur` if not already present. This should make it easier to
+set up a new computer.
 
 ## Installation
 
