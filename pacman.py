@@ -29,6 +29,8 @@ class Pacaur(dotbot.Plugin):
     def handle(self, directive, data):
         if directive != self._directive:
             raise ValueError('Pacaur cannot handle directive %s' % directive)
+        if self._bootstrap_pacaur() != 0:
+            raise Exception('Pacaur could not be installed on your system')
         return self._process_packages(data)
 
     def _process_packages(self, packages):
@@ -86,3 +88,8 @@ class Pacaur(dotbot.Plugin):
 
         self._log.warn("Could not determine what happened with package {}".format(pkg))
         return PkgStatus.NOT_SURE
+
+    def _bootstrap_pacaur(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        cmd = '{}/bootstrap-pacaur'.format(dir_path)
+        return subprocess.call(cmd, shell=True)
