@@ -2,7 +2,6 @@ import sys, os, subprocess, dotbot, time
 from enum import Enum
 
 class PkgStatus(Enum):
-    # These names will be displayed
     UP_TO_DATE = 'Up to date'
     INSTALLED = 'Installed'
     NOT_FOUND = 'Not found'
