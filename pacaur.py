@@ -5,35 +5,34 @@ class PkgStatus(Enum):
     UP_TO_DATE = 'Up to date'
     INSTALLED = 'Installed'
     NOT_FOUND = 'Not found'
-    ERROR = "Errors occurred"
-    BUILD_FAIL = "Build failure"
+    ERROR = 'Errors occurred'
+    BUILD_FAIL = 'Build failure'
     NOT_SURE = 'Could not determine'
 
 class Pacaur(dotbot.Plugin):
-    _directive = 'pacaur'
+    _directives = ['pacman', 'pacaur']
 
     def __init__(self, context):
         super(Pacaur, self).__init__(self)
         self._context = context
         self._strings = {}
-        self._strings[PkgStatus.UP_TO_DATE] = "nothing to do"
-        self._strings[PkgStatus.INSTALLED] = "Total Installed Size"
-        self._strings[PkgStatus.NOT_FOUND] = "no results found"
-        self._strings[PkgStatus.BUILD_FAIL] = "failed to build"
-        self._strings[PkgStatus.ERROR] = "Errors occurred"
+        self._strings[PkgStatus.UP_TO_DATE] = 'nothing to do'
+        self._strings[PkgStatus.INSTALLED] = 'Total Installed Size'
+        self._strings[PkgStatus.NOT_FOUND] = 'no results found'
+        self._strings[PkgStatus.BUILD_FAIL] = 'failed to build'
+        self._strings[PkgStatus.ERROR] = 'Errors occurred'
 
     def can_handle(self, directive):
-        return directive == self._directive
+        return directive in self._directives
 
     def handle(self, directive, data):
-        if directive != self._directive:
+        if not self.can_handle(directive):
             raise ValueError('Pacaur cannot handle directive %s' % directive)
         if self._bootstrap_pacaur() != 0:
             raise Exception('Pacaur could not be installed on your system')
-        return self._process_packages(data)
+        return self._process_packages(directive, data)
 
-    def _process_packages(self, packages):
-        defaults = self._context.defaults().get('pacaur', {})
+    def _process_packages(self, directive, packages):
         results = {}
         successful = [PkgStatus.UP_TO_DATE, PkgStatus.INSTALLED]
 
@@ -41,10 +40,10 @@ class Pacaur(dotbot.Plugin):
             result = self._install(pkg)
             results[result] = results.get(result, 0) + 1
             if result not in successful:
-                self._log.error("Could not install package '{}'".format(pkg))
+                self._log.error('Could not install package {}'.format(pkg))
 
         if all([result in successful for result in results.keys()]):
-            self._log.info('All packages installed successfully')
+            self._log.info('All {} packages installed successfully'.format(directive))
             success = True
         else:
             success = False
@@ -61,7 +60,7 @@ class Pacaur(dotbot.Plugin):
 
         cmd = 'pacaur --needed --noconfirm -S {}'.format(pkg)
 
-        self._log.info("Installing \"{}\"".format(pkg))
+        self._log.info('Installing {}'.format(pkg))
 
         process = subprocess.Popen(cmd, shell=True,
                                    stdout=subprocess.PIPE,
@@ -85,7 +84,7 @@ class Pacaur(dotbot.Plugin):
             if out.find(self._strings[status]) >= 0:
                 return status
 
-        self._log.warn("Could not determine what happened with package {}".format(pkg))
+        self._log.warn('Could not determine what happened with package {}'.format(pkg))
         return PkgStatus.NOT_SURE
 
     def _bootstrap_pacaur(self):
