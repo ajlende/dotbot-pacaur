@@ -2,12 +2,14 @@ import sys, os, subprocess, dotbot, time
 from enum import Enum
 
 class PkgStatus(Enum):
+    AUR_UP_TO_DATE = 'AUR up to date'
     UP_TO_DATE = 'Up to date'
     INSTALLED = 'Installed'
     NOT_FOUND = 'Not found'
     ERROR = 'Errors occurred'
     BUILD_FAIL = 'Build failure'
-    NOT_SURE = 'Could not determine'
+    NOT_SURE_FAIL = 'Non-zero exit code'
+    NOT_SURE_SUCCESS = 'Could not determine'
 
 class Pacaur(dotbot.Plugin):
     _directives = ['pacman', 'pacaur']
@@ -16,6 +18,7 @@ class Pacaur(dotbot.Plugin):
         super(Pacaur, self).__init__(self)
         self._context = context
         self._strings = {}
+        self._strings[PkgStatus.AUR_UP_TO_DATE] = 'up-to-date'
         self._strings[PkgStatus.UP_TO_DATE] = 'nothing to do'
         self._strings[PkgStatus.INSTALLED] = 'Total Installed Size'
         self._strings[PkgStatus.NOT_FOUND] = 'no results found'
@@ -34,7 +37,12 @@ class Pacaur(dotbot.Plugin):
 
     def _process_packages(self, directive, packages):
         results = {}
-        successful = [PkgStatus.UP_TO_DATE, PkgStatus.INSTALLED]
+        successful = [
+            PkgStatus.AUR_UP_TO_DATE,
+            PkgStatus.UP_TO_DATE,
+            PkgStatus.INSTALLED,
+            PkgStatus.NOT_SURE_SUCCESS
+        ]
 
         for pkg in packages:
             result = self._install(pkg)
@@ -76,6 +84,9 @@ class Pacaur(dotbot.Plugin):
             self._log.lowinfo(line.strip())
             sys.stdout.flush()
 
+        outs, errs = process.communicate() # wait for process to exit and set returncode
+        rc = process.returncode
+
         process.stdout.close()
 
         out = ''.join(out)
@@ -84,8 +95,12 @@ class Pacaur(dotbot.Plugin):
             if out.find(self._strings[status]) >= 0:
                 return status
 
+        if rc > 0:
+            self._log.warn('Install failed with exit code {} with package {}'.format(rc, pkg))
+            return PkgStatus.NOT_SURE_FAIL
+
         self._log.warn('Could not determine what happened with package {}'.format(pkg))
-        return PkgStatus.NOT_SURE
+        return PkgStatus.NOT_SURE_SUCCESS
 
     def _bootstrap_pacaur(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
