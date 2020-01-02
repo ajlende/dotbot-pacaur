@@ -1,9 +1,11 @@
 import sys, os, subprocess, dotbot, time
+from collections import defaultdict
 from enum import Enum
 
 class PkgStatus(Enum):
     UP_TO_DATE = 'Up to date'
     INSTALLED = 'Installed'
+    ALREADY_INSTALLED = 'Already Installed'
     NOT_FOUND = 'Not found'
     ERROR = 'Errors occurred'
     BUILD_FAIL = 'Build failure'
@@ -32,15 +34,23 @@ class Pacaur(dotbot.Plugin):
             raise Exception('Pacaur could not be installed on your system')
         return self._process_packages(directive, data)
 
+    def _is_installed(self, pkg):
+        cmd = 'pacman -Qi {} > /dev/null'
+        return subprocess.call(cmd.format(pkg), shell=True) == 0
+
     def _process_packages(self, directive, packages):
-        results = {}
-        successful = [PkgStatus.UP_TO_DATE, PkgStatus.INSTALLED]
+        results = defaultdict(int)
+        successful = [PkgStatus.UP_TO_DATE, PkgStatus.INSTALLED,
+                      PkgStatus.ALREADY_INSTALLED]
 
         for pkg in packages:
-            result = self._install(pkg)
-            results[result] = results.get(result, 0) + 1
-            if result not in successful:
-                self._log.error('Could not install package {}'.format(pkg))
+            if self._is_installed(pkg):
+                results[PkgStatus.ALREADY_INSTALLED] += 1
+            else:
+                result = self._install(pkg)
+                results[result] += 1
+                if result not in successful:
+                    self._log.error('Could not install package {}'.format(pkg))
 
         if all([result in successful for result in results.keys()]):
             self._log.info('All {} packages installed successfully'.format(directive))
